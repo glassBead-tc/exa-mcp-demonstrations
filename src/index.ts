@@ -11,6 +11,7 @@ import { registerCompetitorFinderTool } from "./tools/competitorFinder.js";
 import { registerLinkedInSearchTool } from "./tools/linkedInSearch.js";
 import { registerWikipediaSearchTool } from "./tools/wikipediaSearch.js";
 import { registerGithubSearchTool } from "./tools/githubSearch.js";
+import { registerUserGuideResources } from "./resources/userGuides.js";
 import { log } from "./utils/logger.js";
 
 // Configuration schema for the EXA API key and tool selection
@@ -118,6 +119,9 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
     if (config.debug) {
       log(`Registered ${registeredTools.length} tools: ${registeredTools.join(', ')}`);
     }
+    
+    // Register user guide resources
+    registerUserGuideResources(server);
     
     // Return the server object (Smithery CLI handles transport)
     return server.server;
