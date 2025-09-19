@@ -1,9 +1,9 @@
 import { z } from "zod";
-import axios from "axios";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { API_CONFIG } from "./config.js";
-import { ExaSearchRequest, ExaSearchResponse } from "../types.js";
+import { ExaSearchRequest } from "../types.js";
 import { createRequestLogger } from "../utils/logger.js";
+import { runSearchTool } from "../utils/exaEffect.js";
 
 export function registerResearchPaperSearchTool(server: McpServer, config?: { exaApiKey?: string }): void {
   server.tool(
@@ -19,89 +19,28 @@ export function registerResearchPaperSearchTool(server: McpServer, config?: { ex
       
       logger.start(query);
       
-      try {
-        // Create a fresh axios instance for each request
-        const axiosInstance = axios.create({
-          baseURL: API_CONFIG.BASE_URL,
-          headers: {
-            'accept': 'application/json',
-            'content-type': 'application/json',
-            'x-api-key': config?.exaApiKey || process.env.EXA_API_KEY || ''
+      const searchRequest: ExaSearchRequest = {
+        query: `${query} academic paper research study`,
+        type: "neural",
+        numResults: numResults || API_CONFIG.DEFAULT_NUM_RESULTS,
+        contents: {
+          text: {
+            maxCharacters: API_CONFIG.DEFAULT_MAX_CHARACTERS
           },
-          timeout: 25000
-        });
+          livecrawl: 'preferred'
+        },
+        includeDomains: ["arxiv.org", "scholar.google.com", "researchgate.net", "pubmed.ncbi.nlm.nih.gov", "ieee.org", "acm.org"]
+      };
 
-        const searchRequest: ExaSearchRequest = {
-          query: `${query} academic paper research study`,
-          type: "neural",
-          numResults: numResults || API_CONFIG.DEFAULT_NUM_RESULTS,
-          contents: {
-            text: {
-              maxCharacters: API_CONFIG.DEFAULT_MAX_CHARACTERS
-            },
-            livecrawl: 'preferred'
-          },
-          includeDomains: ["arxiv.org", "scholar.google.com", "researchgate.net", "pubmed.ncbi.nlm.nih.gov", "ieee.org", "acm.org"]
-        };
-        
-        logger.log("Sending request to Exa API for research papers");
-        
-        const response = await axiosInstance.post<ExaSearchResponse>(
-          API_CONFIG.ENDPOINTS.SEARCH,
-          searchRequest,
-          { timeout: 25000 }
-        );
-        
-        logger.log("Received response from Exa API");
-
-        if (!response.data || !response.data.results) {
-          logger.log("Warning: Empty or invalid response from Exa API");
-          return {
-            content: [{
-              type: "text" as const,
-              text: "No research papers found. Please try a different query."
-            }]
-          };
-        }
-
-        logger.log(`Found ${response.data.results.length} research papers`);
-        
-        const result = {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify(response.data, null, 2)
-          }]
-        };
-        
-        logger.complete();
-        return result;
-      } catch (error) {
-        logger.error(error);
-        
-        if (axios.isAxiosError(error)) {
-          // Handle Axios errors specifically
-          const statusCode = error.response?.status || 'unknown';
-          const errorMessage = error.response?.data?.message || error.message;
-          
-          logger.log(`Axios error (${statusCode}): ${errorMessage}`);
-          return {
-            content: [{
-              type: "text" as const,
-              text: `Research paper search error (${statusCode}): ${errorMessage}`
-            }],
-            isError: true,
-          };
-        }
-        
-        // Handle generic errors
-        return {
-          content: [{
-            type: "text" as const,
-            text: `Research paper search error: ${error instanceof Error ? error.message : String(error)}`
-          }],
-          isError: true,
-        };
-      }
+      return runSearchTool({
+        logger,
+        request: searchRequest,
+        apiKey: config?.exaApiKey,
+        requestLabel: "research papers",
+        resultsLabel: "research papers",
+        emptyResultsMessage: "No research papers found. Please try a different query.",
+        errorMessage: "Research paper search error: Failed to retrieve results from Exa."
+      });
     }
   );
-} 
+}
