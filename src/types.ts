@@ -20,8 +20,17 @@ export interface ExaSearchRequest {
 
 export interface ExaCrawlRequest {
   ids: string[];
-  text: boolean;
-  livecrawl?: 'always' | 'fallback' | 'preferred';
+  contents: {
+    text: {
+      maxCharacters?: number;
+    } | boolean;
+    livecrawl?: 'always' | 'fallback' | 'preferred';
+  };
+}
+
+export interface ExaCrawlResponse {
+  results: Array<Record<string, unknown>>;
+  [key: string]: unknown;
 }
 
 export interface ExaSearchResult {
@@ -48,4 +57,14 @@ export interface SearchArgs {
   query: string;
   numResults?: number;
   livecrawl?: 'always' | 'fallback' | 'preferred';
+}
+
+export interface ToolContent {
+  type: 'text';
+  text: string;
+}
+
+export interface ToolResponse {
+  content: ToolContent[];
+  isError?: boolean;
 }
